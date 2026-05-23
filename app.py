@@ -1,8 +1,38 @@
-import subprocess
-subprocess.run(["python", "setup.py"])
-import streamlit as st
+import os
 import pandas as pd
 import pickle
+import streamlit as st
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import LabelEncoder
+
+# --- Auto-train if model doesn't exist ---
+def train_model():
+    df = pd.read_csv("data/crop_production_cleaned.csv")
+    features = ["State_Name", "Crop_Year", "Season", "Crop", "Area"]
+
+    le_state  = LabelEncoder()
+    le_season = LabelEncoder()
+    le_crop   = LabelEncoder()
+
+    df["State_Name"] = le_state.fit_transform(df["State_Name"])
+    df["Season"]     = le_season.fit_transform(df["Season"])
+    df["Crop"]       = le_crop.fit_transform(df["Crop"])
+
+    X = df[features]
+    y = df["Yield"]
+
+    model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    model.fit(X, y)
+
+    os.makedirs("model", exist_ok=True)
+    pickle.dump(model,     open("model/model.pkl",    "wb"))
+    pickle.dump(le_state,  open("model/le_state.pkl", "wb"))
+    pickle.dump(le_season, open("model/le_season.pkl","wb"))
+    pickle.dump(le_crop,   open("model/le_crop.pkl",  "wb"))
+
+if not os.path.exists("model/model.pkl"):
+    with st.spinner("⏳ Setting up model for first time... (2-3 mins)"):
+        train_model()
 
 # --- Load model and encoders ---
 model     = pickle.load(open("model/model.pkl",    "rb"))
@@ -12,13 +42,11 @@ le_crop   = pickle.load(open("model/le_crop.pkl",  "rb"))
 
 # --- Page config ---
 st.set_page_config(page_title="Crop Yield Predictor", page_icon="🌾")
-
 st.title("🌾 Crop Yield Predictor")
 st.markdown("Predict crop yield (tonnes per hectare) based on farming conditions.")
 
 # --- Input form ---
 st.header("Enter Crop Details")
-
 col1, col2 = st.columns(2)
 
 with col1:
@@ -40,10 +68,8 @@ if st.button("🔍 Predict Yield"):
                                columns=["State_Name", "Crop_Year", "Season", "Crop", "Area"])
 
     prediction = model.predict(input_data)[0]
-
     st.success(f"🌱 Predicted Yield: **{prediction:.2f} tonnes/hectare**")
 
-    # Context message
     if prediction < 1:
         st.warning("⚠️ Low yield expected. Consider soil quality and irrigation.")
     elif prediction < 5:
