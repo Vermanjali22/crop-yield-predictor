@@ -9,9 +9,8 @@ from sklearn.preprocessing import LabelEncoder
 @st.cache_resource
 def load_model():
     if not os.path.exists("model/model.pkl"):
-        st.info("⏳ Training model for first time... please wait 2-3 mins")
-        
-        df = pd.read_csv("data/crop_production_cleaned.csv")
+
+        df = pd.read_csv("data/crop_production_cleaned.csv").sample(50000, random_state=42)
         features = ["State_Name", "Crop_Year", "Season", "Crop", "Area"]
 
         le_state  = LabelEncoder()
@@ -25,7 +24,7 @@ def load_model():
         X = df[features]
         y = df["Yield"]
 
-        model = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+        model = RandomForestRegressor(n_estimators=20, random_state=42, n_jobs=-1)
         model.fit(X, y)
 
         os.makedirs("model", exist_ok=True)
@@ -45,7 +44,8 @@ st.set_page_config(page_title="Crop Yield Predictor", page_icon="🌾")
 st.title("🌾 Crop Yield Predictor")
 st.markdown("Predict crop yield (tonnes per hectare) based on farming conditions.")
 
-model, le_state, le_season, le_crop = load_model()
+with st.spinner("⏳ Loading model... please wait"):
+    model, le_state, le_season, le_crop = load_model()
 
 # --- Input form ---
 st.header("Enter Crop Details")
