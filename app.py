@@ -1,42 +1,27 @@
-import os
 import pandas as pd
-import pickle
 import streamlit as st
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
 
-# --- Auto-train if model doesn't exist ---
 @st.cache_resource
 def load_model():
-    if not os.path.exists("model/model.pkl"):
+    df = pd.read_csv("data/crop_production_cleaned.csv").sample(50000, random_state=42)
+    features = ["State_Name", "Crop_Year", "Season", "Crop", "Area"]
 
-        df = pd.read_csv("data/crop_production_cleaned.csv").sample(50000, random_state=42)
-        features = ["State_Name", "Crop_Year", "Season", "Crop", "Area"]
+    le_state  = LabelEncoder()
+    le_season = LabelEncoder()
+    le_crop   = LabelEncoder()
 
-        le_state  = LabelEncoder()
-        le_season = LabelEncoder()
-        le_crop   = LabelEncoder()
+    df["State_Name"] = le_state.fit_transform(df["State_Name"])
+    df["Season"]     = le_season.fit_transform(df["Season"])
+    df["Crop"]       = le_crop.fit_transform(df["Crop"])
 
-        df["State_Name"] = le_state.fit_transform(df["State_Name"])
-        df["Season"]     = le_season.fit_transform(df["Season"])
-        df["Crop"]       = le_crop.fit_transform(df["Crop"])
+    X = df[features]
+    y = df["Yield"]
 
-        X = df[features]
-        y = df["Yield"]
+    model = RandomForestRegressor(n_estimators=20, random_state=42, n_jobs=-1)
+    model.fit(X, y)
 
-        model = RandomForestRegressor(n_estimators=20, random_state=42, n_jobs=-1)
-        model.fit(X, y)
-
-        os.makedirs("model", exist_ok=True)
-        pickle.dump(model,     open("model/model.pkl",    "wb"))
-        pickle.dump(le_state,  open("model/le_state.pkl", "wb"))
-        pickle.dump(le_season, open("model/le_season.pkl","wb"))
-        pickle.dump(le_crop,   open("model/le_crop.pkl",  "wb"))
-
-    model     = pickle.load(open("model/model.pkl",    "rb"))
-    le_state  = pickle.load(open("model/le_state.pkl", "rb"))
-    le_season = pickle.load(open("model/le_season.pkl","rb"))
-    le_crop   = pickle.load(open("model/le_crop.pkl",  "rb"))
     return model, le_state, le_season, le_crop
 
 # --- Page config ---
