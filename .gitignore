@@ -1,3 +1,5 @@
 model/model.pkl
+model/le_state.pkl
+model/le_season.pkl
+model/le_crop.pkl
 data/crop_production.csv
-data/crop_production_cleaned.csv
